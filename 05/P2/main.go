@@ -62,7 +62,8 @@ func main() {
 				}
 				updateLine[i] = number
 			}
-			if isUpdateValid(updateLine, relationshipsMap) {
+			if !isUpdateValid(updateLine, relationshipsMap) {
+				quickSort(updateLine, relationshipsMap, 0, len(updateLine)-1)
 				validUpdatesTotal += int64(updateLine[len(updateLine)/2])
 			}
 		}
@@ -89,4 +90,25 @@ func isUpdateValid(updateLine []int, rulesMap map[int]relationship) bool {
 		}
 	}
 	return true
+}
+
+func quickSort(list []int, rulesMap map[int]relationship, lowerBound int, upperBound int) {
+	if lowerBound < upperBound {
+		pivot := list[upperBound]
+
+		i := lowerBound - 1
+
+		for j := lowerBound; j < upperBound; j++ {
+			if rulesMap[list[j]].followedBy[pivot] {
+				i++
+				list[i], list[j] = list[j], list[i]
+			}
+		}
+
+		list[i+1], list[upperBound] = list[upperBound], list[i+1]
+
+		pivotIndex := i + 1
+		quickSort(list, rulesMap, lowerBound, pivotIndex-1)
+		quickSort(list, rulesMap, pivotIndex+1, upperBound)
+	}
 }
