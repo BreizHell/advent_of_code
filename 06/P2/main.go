@@ -13,22 +13,23 @@ type coordinate struct {
 }
 
 func main() {
-	file, err := os.Open("../input")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+	path := getMatrix("./guardPath")
+	good := getMatrix("./known_good_response")
+	bad := getMatrix("./my_response")
 
-	originalMatrix := make([][]rune, 0, 131)
+	comp := getGoodBadComparison(path, good, bad)
+
+	printMatrix(comp)
+}
+
+/*
+func main() {
+	originalMatrix := getMatrix("../input")
 	var startX = 0
 	var startY = 0
 
-	scanner := bufio.NewScanner(file)
-	for y := 0; scanner.Scan(); y++ {
-		text := scanner.Text()
-		originalMatrix = append(originalMatrix, []rune(text))
-
-		for x, tile := range text {
+	for y, row := range originalMatrix {
+		for x, tile := range row {
 			if tile == '^' || tile == '>' || tile == 'v' || tile == '<' {
 				startX, startY = x, y
 			}
@@ -67,7 +68,43 @@ func main() {
 	for _, row := range matrixBuffer {
 		fmt.Printf("%v\n", string(row))
 	}
+}*/
 
+func getMatrix(path string) [][]rune {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	matrix := make([][]rune, 0, 131)
+
+	scanner := bufio.NewScanner(file)
+	for y := 0; scanner.Scan(); y++ {
+		text := scanner.Text()
+		matrix = append(matrix, []rune(text))
+	}
+
+	return matrix
+}
+
+func getGoodBadComparison(base [][]rune, good [][]rune, bad [][]rune) [][]rune {
+	comparison := make([][]rune, 130)
+	for y := range comparison {
+		comparison[y] = make([]rune, 130)
+		for x := range comparison[y] {
+			if val := good[y][x]; val == '0' && bad[y][x] == '.' {
+				comparison[y][x] = 'X'
+			} else if val == '.' && bad[y][x] == '0' {
+				comparison[y][x] = '+'
+			} else if val == '0' {
+				comparison[y][x] = '0'
+			} else {
+				comparison[y][x] = base[y][x]
+			}
+		}
+	}
+	return comparison
 }
 
 func play(matrix [][]rune, startX int, startY int) (map[coordinate]bool, bool) {
