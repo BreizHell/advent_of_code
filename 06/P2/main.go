@@ -1,5 +1,13 @@
 package main
 
+// Identified errors:
+// - If a path is rejoined, it might be a path posterior to where the obstacle is put
+//	Therefore, assuming that coming to the tile {x,y}, that has the same value as our-
+//	current direction doesn't mean we are in a loop. We can be on the way out !
+// - Every obstacle that's missing in this implementation involves a "straight 180°" pattern
+//	 ie. when two existing obstacles are in diagonal, and the guard arrives between them
+//			  ^ this causes a double 90 degree turn, hence the 180°
+
 import (
 	"bufio"
 	"fmt"
@@ -12,6 +20,7 @@ type coordinate struct {
 	y int
 }
 
+/*
 func main() {
 	path := getMatrix("./guardPath")
 	good := getMatrix("./known_good_response")
@@ -21,8 +30,8 @@ func main() {
 
 	printMatrix(comp)
 }
+*/
 
-/*
 func main() {
 	originalMatrix := getMatrix("../input")
 	var startX = 0
@@ -68,7 +77,7 @@ func main() {
 	for _, row := range matrixBuffer {
 		fmt.Printf("%v\n", string(row))
 	}
-}*/
+}
 
 func getMatrix(path string) [][]rune {
 	file, err := os.Open(path)
