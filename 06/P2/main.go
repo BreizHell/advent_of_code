@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 )
@@ -19,8 +20,8 @@ func main() {
 	defer file.Close()
 
 	originalMatrix := make([][]rune, 0, 131)
-	var posX = 0
-	var posY = 0
+	var startX = 0
+	var startY = 0
 
 	scanner := bufio.NewScanner(file)
 	for y := 0; scanner.Scan(); y++ {
@@ -29,7 +30,7 @@ func main() {
 
 		for x, tile := range text {
 			if tile == '^' || tile == '>' || tile == 'v' || tile == '<' {
-				posX, posY = x, y
+				startX, startY = x, y
 			}
 		}
 	}
@@ -37,70 +38,65 @@ func main() {
 	matrixBuffer := make([][]rune, len(originalMatrix))
 	cloneMatrix(originalMatrix, matrixBuffer)
 
-	originalPathCoordinates, _ := play(matrixBuffer, posX, posY)
-	delete(originalPathCoordinates, coordinate{posX, posY}) // remove starting point
+	originalPathCoordinates, _ := play(matrixBuffer, startX, startY)
 
+	// printMatrix(matrixBuffer)
+	log.Printf("Original guard path goes over %v individual tiles", len(originalPathCoordinates))
+
+	// "The new obstruction can't be placed at the guard's starting position - the guard is there right now and would notice."
+	delete(originalPathCoordinates, coordinate{startX, startY})
+
+	succesfullCoordinates := make([]coordinate, 0, len(originalPathCoordinates))
 	nbSolutions := 0
 	for coord := range originalPathCoordinates {
 		cloneMatrix(originalMatrix, matrixBuffer)
 		matrixBuffer[coord.y][coord.x] = '#'
-		if _, hasLooped := play(matrixBuffer, posX, posY); hasLooped {
+		if _, hasLooped := play(matrixBuffer, startX, startY); hasLooped {
+			succesfullCoordinates = append(succesfullCoordinates, coord)
 			nbSolutions++
-			log.Printf("current nbSolutions: %v", nbSolutions)
 		}
 	}
 
 	log.Printf("Solutions: %v", nbSolutions)
+
+	log.Print("Solution Map:")
+	cloneMatrix(originalMatrix, matrixBuffer)
+	for _, coord := range succesfullCoordinates {
+		matrixBuffer[coord.y][coord.x] = '0'
+	}
+	for _, row := range matrixBuffer {
+		fmt.Printf("%v\n", string(row))
+	}
+
 }
 
 func play(matrix [][]rune, startX int, startY int) (map[coordinate]bool, bool) {
 	path := make(map[coordinate]bool, len(matrix)*len(matrix[0]))
 
-	x, y := startX, startY
-	var nextTile rune
-	var nextCoord coordinate
-	var currentDirection rune
-	var stillWithinBoundary = true
-	defer func() {
-		path[coordinate{x, y}] = true
-		matrix[y][x] = currentDirection
-	}()
-
-	for {
-		defer func(fromX, fromY int) {
-			path[coordinate{fromX, fromY}] = true
-		}(x, y)
-
-		// TODO	: redo this chaos vvvv
-		currentDirection = matrix[y][x]
-		nextCoord, stillWithinBoundary = nextTileCoordinates(matrix, currentDirection, x, y)
-		x = nextCoord.x
-		y = nextCoord.y
-
-		if !stillWithinBoundary
-		//y--
-		//	if y-1 < 0 {
-		//		return path, false
-		//	}
-		//	nextTile = matrix[y-1][x]
-
-		if !stillWithinBoundary
-
-		// TODO	: redo this chaos ^^^^
-
-		if nextTile == '#' {
-			matrix[y][x] = ninetyDegreeClockwise(currentDirection)
-			nextCoord, stillWithinBoundary = nextTileCoordinates(matrix, matrix[y][x], x, y)
-			if stillWithinBoundary && matrix[nextCoord.y][nextCoord.x] == matrix[y][x] {
-				return path, true
+	x, y, stillWithinBoundary := startX, startY, true
+	currentDirection := matrix[y][x]
+	matrix[y][x] = '.'
+	for ; stillWithinBoundary; x, y, stillWithinBoundary = nextTileCoordinates(matrix, currentDirection, x, y) {
+		if matrix[y][x] == '#' {
+			// Change direction
+			currentDirection = ninetyDegreeClockwise(currentDirection)
+			// Backtrack
+			x, y, _ = nextTileCoordinates(matrix, ninetyDegreeClockwise(currentDirection), x, y)
+			// Get to right side coordinate
+			x, y, stillWithinBoundary = nextTileCoordinates(matrix, currentDirection, x, y)
+			if stillWithinBoundary {
+				matrix[y][x] = currentDirection
 			}
 		} else {
-			matrix[y][x] = currentDirection
-			if matrix[y][x] == nextTile {
+			if currentDirection == matrix[y][x] {
 				return path, true
 			}
+			matrix[y][x] = currentDirection
 		}
+		path[coordinate{x, y}] = true
 	}
+
+	return path, false
 }
 
 func cloneMatrix(source [][]rune, destination [][]rune) {
@@ -123,36 +119,42 @@ func ninetyDegreeClockwise(from rune) rune {
 	case '<':
 		return '^'
 	default:
-		log.Fatalf("Unkown direction '%v'", from)
+		log.Fatalf("Unknown direction '%v'", string(from))
 		return 'X'
 	}
 }
 
-func nextTileCoordinates(matrix [][]rune, direction rune, x, y int) (coord coordinate, respectsBoundary bool) {
+func nextTileCoordinates(matrix [][]rune, direction rune, x, y int) (nX int, nY int, respectsBoundary bool) {
 	switch direction {
 	case '^':
-		if 0 < y-1 {
+		if 0 <= y-1 {
 			respectsBoundary = true
 		}
-		coord = coordinate{x, y - 1}
+		nX, nY = x, y-1
 	case '>':
 		if x < len(matrix[y])-1 {
 			respectsBoundary = true
 		}
-		coord = coordinate{x + 1, y}
+		nX, nY = x+1, y
 	case 'v':
 		if y < len(matrix)-1 {
 			respectsBoundary = true
 		}
-		coord = coordinate{x, y + 1}
+		nX, nY = x, y+1
 	case '<':
-		if 0 < x-1 {
+		if 0 <= x-1 {
 			respectsBoundary = true
 		}
-		coord = coordinate{x - 1, y}
+		nX, nY = x-1, y
 	default:
-		log.Fatalf("Unkown direction '%v'", direction)
-		coord = coordinate{0, 0}
+		log.Fatalf("Unknown direction '%v'", string(direction))
+		nX, nY = 0, 0
 	}
-	return coord, respectsBoundary
+	return nX, nY, respectsBoundary
+}
+
+func printMatrix(matrix [][]rune) {
+	for _, row := range matrix {
+		fmt.Printf("%v\n", string(row))
+	}
 }
