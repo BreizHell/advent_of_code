@@ -20,17 +20,11 @@ type coordinate struct {
 	y int
 }
 
-/*
-func main() {
-	path := getMatrix("./guardPath")
-	good := getMatrix("./known_good_response")
-	bad := getMatrix("./my_response")
-
-	comp := getGoodBadComparison(path, good, bad)
-
-	printMatrix(comp)
+type X struct {
+	x         int
+	y         int
+	direction rune
 }
-*/
 
 func main() {
 	originalMatrix := getMatrix("../input")
@@ -77,6 +71,34 @@ func main() {
 	for _, row := range matrixBuffer {
 		fmt.Printf("%v\n", string(row))
 	}
+}
+
+// Mon x est une structure donnant ma position et ma direction actuelle
+// Le f donne la structure suivante
+func brent(f func(X) X, x0 X) (lambda int, mu int) {
+	tortoise := x0
+	hare := f(x0)
+	i, lambda := 1, 1
+
+	for ; tortoise != hare; hare, lambda = f(hare), lambda+1 {
+		if i == lambda {
+			tortoise = hare
+			i *= 2
+			lambda = 0
+		}
+	}
+
+	tortoise, hare = x0, x0
+	for range lambda {
+		hare = f(hare)
+	}
+
+	for ; tortoise != hare; mu++ {
+		tortoise = f(tortoise)
+		hare = f(hare)
+	}
+
+	return lambda, mu
 }
 
 func getMatrix(path string) [][]rune {
